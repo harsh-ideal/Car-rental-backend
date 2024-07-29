@@ -6,6 +6,13 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   userType: { type: String, enum: ['customer', 'agency'], required: true },
+  bookings: [
+    {
+      bookCar: { type: mongoose.Schema.Types.ObjectId, ref: 'Car' },
+      startDate: { type: Date, required: true },
+      days: { type: Number, required: true },
+    },
+  ],
 });
 
 userSchema.pre('save', async function(next) {

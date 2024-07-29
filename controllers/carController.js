@@ -87,7 +87,8 @@ export const removeCar = async (req, res) => {
 export const getAvailableCars = async (req, res) => {
   console.log(process.env.CLOUD_API_KEY);
   try {
-    const cars = await Car.find();
+    const cars = await Car.find().populate('agency','name email');
+    console.log(cars);
     res.json(cars);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -96,16 +97,31 @@ export const getAvailableCars = async (req, res) => {
 
 export const bookCar = async (req, res) => {
   const { carId } = req.params;
-  const { startDate, days } = req.body;
-
+  const userId=req.user._id;
+  let { startDate, days } = req.body;
+  const dateObject = new Date(startDate);
+  startDate = dateObject.toISOString().split('T')[0];
   try {
+    console.log('-1');
     const car = await Car.findById(carId);
+    console.log("-2");
+    const user = await User.findById(userId);
+    console.log('-3');
     if (!car) {
       return res.status(404).json({ message: 'Car not found' });
     }
-
-    car.bookings.push({ customer: req.user._id, startDate, days });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    console.log("-4");
+    car.bookings.push({ customer: userId, startDate, days });
+    console.log("1");
+    await user.bookings.push({bookCar:carId,startDate,days});
+    console.log("2");
     await car.save();
+    console.log('3');
+    await user.save();
+    console.log('4');
 
     res.status(200).json({ message: 'Car booked successfully' });
   } catch (error) {
@@ -115,12 +131,33 @@ export const bookCar = async (req, res) => {
 
 export const getBookedCars = async (req, res) => {
   try {
-    console.log(req.user._id);
     const cars = await Car.find({ agency: req.user._id }).populate('bookings.customer', 'name email');
+    console.log(cars[0].bookings);
     res.json(cars);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+export const myBookedCars = async (req, res) => {
+  try {
+   
+    const user = await User.findById(req.user._id).populate('bookings.bookCar', 'model capacity rentPerDay number agency');
+   
+   
+      user.bookings.map(async (booking)=>{
+        let id=booking.bookCar.agency;
+        const agen=await User.findById(id);
+        booking.bookCar.agency=agen.name;
+        booking.bookCar.agencyemail=agen.email;
+      })
+     
+    
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 
 
